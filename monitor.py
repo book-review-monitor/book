@@ -130,15 +130,24 @@ def fmt_rating(v):
     return f"{int(v) if float(v).is_integer() else v} / 5"
 
 
+LOW_RATING_MAX = 2  # 이 점수 이하(5점 만점)는 저별점으로 강조
+
+
 def format_message(r, header="[신규 후기 알림]"):
     esc = lambda s: s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    rating = fmt_rating(r["rating"])
+    if header == "[신규 후기 알림]" and r["rating"] <= LOW_RATING_MAX:
+        # 멘션 대상은 환경변수로 지정: 예) <!channel>, <!here>, <@U0123ABCD>
+        mention = os.environ.get("LOW_RATING_MENTION", "").strip()
+        header = f"🚨 [저별점 후기 알림] {mention}".rstrip()
+        rating = f"*{rating}* ⚠️"
     return (
         f"{header}\n\n"
         f"* 구분: 자사\n"
         f"* 채널: {r['channel']}\n"
         f"* 도서명: {esc(r['title'])}\n"
         f"* 작성일: {r['date']}\n"
-        f"* 별점: {fmt_rating(r['rating'])}\n"
+        f"* 별점: {rating}\n"
         f"* 내용: {esc(r['content'])}"
     )
 
