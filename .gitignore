@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+# 서비스 계정 키 등 비밀 파일이 실수로 올라가지 않도록
+*.json
+!books.json
+.env
