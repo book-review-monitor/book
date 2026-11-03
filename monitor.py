@@ -188,7 +188,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--test-slack", action="store_true")
+    ap.add_argument("--loop-minutes", type=int, default=0,
+                    help="이 시간(분) 동안 --interval-minutes 간격으로 반복 실행. 0이면 1회만 실행")
+    ap.add_argument("--interval-minutes", type=int, default=30)
     args = ap.parse_args()
+    sys.stdout.reconfigure(line_buffering=True)
 
     if args.test_slack:
         send_slack(format_message(
@@ -210,6 +214,28 @@ def main():
         print(f"수집 {len(reviews)}건 / 실패 {failed}곳")
         return 0
 
+    if not args.loop_minutes:
+        return run_once(books)
+
+    # 반복 모드: GitHub 예약 실행이 불규칙하므로, 한 번 시작되면 정해진 간격으로 계속 수집한다.
+    end = time.monotonic() + args.loop_minutes * 60
+    results = []
+    while True:
+        stamp = datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S")
+        print(f"=== {stamp} KST ===")
+        try:
+            results.append(run_once(books))
+        except Exception as e:  # 일시 장애로 반복이 끊기지 않게 한다
+            print(f"[실행 오류] {type(e).__name__}: {e}", file=sys.stderr)
+            results.append(1)
+        wait = args.interval_minutes * 60
+        if time.monotonic() + wait >= end:
+            break
+        time.sleep(wait)
+    return 0 if 0 in results else 1  # 한 번도 성공 못 했을 때만 실패 처리
+
+
+def run_once(books):
     ws = open_sheet()
     seen = set(ws.col_values(1)[1:])
     baseline = len(seen) == 0

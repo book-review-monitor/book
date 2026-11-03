@@ -1,8 +1,11 @@
 name: review-monitor
 
+# GitHub 의 짧은 간격(*/10) 예약 실행은 실제로 1시간 단위로 밀리므로,
+# 매시 17분에 실행을 요청해 두고, 실행 1건이 약 5시간 45분 동안 30분 간격으로 반복 수집한다.
+# 앞선 실행이 끝나면 대기 중이던 다음 실행이 바로 이어받는다(concurrency).
 on:
   schedule:
-    - cron: "*/10 * * * *"   # 10분마다 (정각, 10, 20, 30, 40, 50분)
+    - cron: "17 * * * *"
   workflow_dispatch: {}
 
 concurrency:
@@ -12,7 +15,7 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 355
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,7 +24,7 @@ jobs:
           cache: pip
           cache-dependency-path: requirements.txt
       - run: pip install -r requirements.txt
-      - run: python monitor.py
+      - run: python monitor.py --loop-minutes 345 --interval-minutes 30
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
